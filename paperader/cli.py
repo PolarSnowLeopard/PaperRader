@@ -308,5 +308,17 @@ def stats():
         console.print()
 
 
+@app.command()
+def serve(
+    host: str = typer.Option("0.0.0.0", help="Host to bind"),
+    port: int = typer.Option(8000, help="Port to bind"),
+):
+    """Start the FastAPI web server."""
+    import uvicorn
+
+    console.print(f"[green]Starting server at http://{host}:{port}[/green]")
+    uvicorn.run("server.main:app", host=host, port=port, reload=True)
+
+
 if __name__ == "__main__":
     app()
