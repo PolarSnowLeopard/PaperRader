@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # Semantic Scholar
     s2_api_key: str = ""
 
+    # Auth
+    secret_key: str = "paperader-dev-secret"
+
     # Server
     server_host: str = "0.0.0.0"
     server_port: int = 8000

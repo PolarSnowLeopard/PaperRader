@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from server.routers import chat, folders, notes, papers, report, search, sync, tags, workspaces
+from server.routers import auth, chat, folders, notes, papers, report, search, sync, tags, workspaces
 
 
 def create_app() -> FastAPI:
@@ -32,14 +32,27 @@ def create_app() -> FastAPI:
                     conn.execute(text("ALTER TABLE papers ADD COLUMN report TEXT"))
                     conn.commit()
 
+        from paperader.models.user import User
+        from server.auth import hash_password
+
+        SessionLocal = __import__("sqlalchemy.orm", fromlist=["sessionmaker"]).sessionmaker(bind=engine)
+        db = SessionLocal()
+        try:
+            if db.query(User).count() == 0:
+                db.add(User(username="admin", password_hash=hash_password("123456")))
+                db.commit()
+        finally:
+            db.close()
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://eblab.club:3000"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
+    app.include_router(auth.router)
     app.include_router(workspaces.router)
     app.include_router(folders.router)
     app.include_router(tags.router)

@@ -6,6 +6,7 @@ from paperader.models.note import PaperNote
 from paperader.models.chunk import PaperChunk
 from paperader.models.chat import ChatSession, ChatMessage
 from paperader.models.sync_log import SyncLog
+from paperader.models.user import User
 
 __all__ = [
     "Base",
@@ -22,4 +23,5 @@ __all__ = [
     "ChatSession",
     "ChatMessage",
     "SyncLog",
+    "User",
 ]
