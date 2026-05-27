@@ -30,5 +30,8 @@ env/
 frontend/node_modules/
 frontend/dist/
 
+# Claude Code
+.claude/
+
 # Alembic
 alembic/versions/__pycache__/

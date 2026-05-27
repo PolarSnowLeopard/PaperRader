@@ -1,51 +1,97 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  HomeOutlined,
-  ReadOutlined,
-  SearchOutlined,
-  BarChartOutlined,
-} from '@ant-design/icons-vue'
+import { useRouter, useRoute } from 'vue-router'
+import { BookOutlined } from '@ant-design/icons-vue'
 
 const router = useRouter()
-const selectedKeys = ref(['home'])
-const collapsed = ref(false)
-
-const menuItems = [
-  { key: 'home', icon: HomeOutlined, label: '总览', path: '/' },
-  { key: 'feed', icon: ReadOutlined, label: '论文流', path: '/feed' },
-  { key: 'search', icon: SearchOutlined, label: '智能搜索', path: '/search' },
-  { key: 'stats', icon: BarChartOutlined, label: '趋势统计', path: '/stats' },
-]
-
-function onMenuClick({ key }) {
-  const item = menuItems.find((m) => m.key === key)
-  if (item) router.push(item.path)
-}
+const route = useRoute()
 </script>
 
 <template>
-  <a-layout style="min-height: 100vh">
-    <a-layout-sider v-model:collapsed="collapsed" collapsible theme="light">
-      <div style="height: 48px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; color: #1677ff;">
-        {{ collapsed ? 'PR' : 'PaperRader' }}
+  <a-layout class="app-layout">
+    <a-layout-header class="app-header">
+      <div class="header-brand" @click="router.push('/')">
+        <div class="brand-icon">
+          <book-outlined />
+        </div>
+        <span class="brand-text">PaperRader</span>
       </div>
-      <a-menu
-        v-model:selectedKeys="selectedKeys"
-        mode="inline"
-        @click="onMenuClick"
-      >
-        <a-menu-item v-for="item in menuItems" :key="item.key">
-          <component :is="item.icon" />
-          <span>{{ item.label }}</span>
-        </a-menu-item>
-      </a-menu>
-    </a-layout-sider>
-    <a-layout>
-      <a-layout-content style="padding: 24px; background: #f5f5f5;">
-        <router-view />
-      </a-layout-content>
-    </a-layout>
+      <div style="flex: 1" />
+      <a-button class="header-nav-btn" type="text" @click="router.push('/conference')">
+        会议监控
+      </a-button>
+    </a-layout-header>
+    <a-layout-content class="app-content">
+      <router-view />
+    </a-layout-content>
   </a-layout>
 </template>
+
+<style scoped>
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #1e1e2e 0%, #2d1b69 50%, #1e1e2e 100%) !important;
+  padding: 0 24px !important;
+  display: flex;
+  align-items: center;
+  height: var(--header-height) !important;
+  line-height: var(--header-height) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 12px rgba(0, 0, 0, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+
+.header-brand:hover {
+  opacity: 0.85;
+}
+
+.brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+}
+
+.brand-text {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.header-nav-btn {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.header-nav-btn:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.app-content {
+  background: var(--bg-page);
+}
+</style>

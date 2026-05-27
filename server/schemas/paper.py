@@ -13,6 +13,7 @@ class PaperOut(BaseModel):
     year: Optional[int] = None
     arxiv_id: Optional[str] = None
     doi: Optional[str] = None
+    pdf_path: Optional[str] = None
     pdf_url: Optional[str] = None
     abs_url: Optional[str] = None
     categories: list[str] = []
@@ -20,6 +21,7 @@ class PaperOut(BaseModel):
     keywords: list[str] = []
     citation_count: Optional[int] = None
     tldr: Optional[str] = None
+    report: Optional[str] = None
     source: str
     published_date: Optional[datetime] = None
     created_at: datetime
@@ -33,18 +35,3 @@ class PaperListOut(BaseModel):
     total: int
     page: int
     page_size: int
-
-
-class UserPaperOut(BaseModel):
-    paper: PaperOut
-    is_starred: bool = False
-    read_status: str = "unread"
-    user_notes: Optional[str] = None
-    user_rating: Optional[int] = None
-
-
-class UserPaperUpdate(BaseModel):
-    is_starred: Optional[bool] = None
-    read_status: Optional[str] = None
-    user_notes: Optional[str] = None
-    user_rating: Optional[int] = None

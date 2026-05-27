@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -7,22 +8,10 @@ from rich.table import Table
 
 from paperader.config import get_settings
 from paperader.models.base import Base, get_engine, get_session
-from paperader.models.user import User, UserSubscription
 from paperader.models.paper import Paper
 
 app = typer.Typer(name="paperader", help="AI-powered research paper assistant")
 console = Console()
-
-DEFAULT_USER = "default"
-
-
-def _ensure_default_user(session):
-    user = session.query(User).filter(User.username == DEFAULT_USER).first()
-    if not user:
-        user = User(username=DEFAULT_USER)
-        session.add(user)
-        session.flush()
-    return user
 
 
 @app.command()
@@ -30,64 +19,65 @@ def init_db():
     """Initialize the database (create all tables)."""
     engine = get_engine()
     Base.metadata.create_all(engine)
-    with get_session() as session:
-        _ensure_default_user(session)
+
+    settings = get_settings()
+    Path(settings.pdf_storage_path).mkdir(parents=True, exist_ok=True)
+
     console.print("[green]Database initialized successfully.[/green]")
 
 
 @app.command()
 def collect(
-    source: str = typer.Option("arxiv", help="Data source: arxiv, dblp"),
+    source: str = typer.Option("arxiv", help="Data source: arxiv, dblp, openreview, acl"),
+    categories: Optional[list[str]] = typer.Option(None, "--cat", help="arXiv categories (e.g. cs.CL)"),
+    conference: str = typer.Option(None, help="Conference key (e.g. ICLR2025, ACL2024)"),
     max_results: int = typer.Option(100, help="Maximum papers to collect"),
 ):
-    """Collect papers from specified source based on subscriptions."""
-    from paperader.collectors.arxiv import ArxivCollector
+    """Collect papers from specified source."""
     from paperader.services.paper_service import upsert_papers
     from paperader.models.sync_log import SyncLog
 
     with get_session() as session:
-        user = _ensure_default_user(session)
-
-        # Get user's subscribed categories
-        subs = (
-            session.query(UserSubscription)
-            .filter(UserSubscription.user_id == user.id, UserSubscription.sub_type == "category")
-            .all()
-        )
-        categories = [s.value for s in subs] if subs else None
-
         log = SyncLog(source=source, status="running")
         session.add(log)
         session.flush()
 
         try:
             if source == "arxiv":
+                from paperader.collectors.arxiv import ArxivCollector
+
                 collector = ArxivCollector(max_results=max_results)
-                papers = collector.collect(categories=categories)
+                papers = collector.collect(categories=categories or None)
             elif source == "dblp":
                 from paperader.collectors.dblp import DblpCollector
 
-                conf_subs = (
-                    session.query(UserSubscription)
-                    .filter(
-                        UserSubscription.user_id == user.id,
-                        UserSubscription.sub_type == "conference",
-                    )
-                    .all()
-                )
+                if not conference:
+                    console.print("[yellow]Specify --conference (e.g. NeurIPS)[/yellow]")
+                    return
                 current_year = datetime.now(timezone.utc).year
                 collector = DblpCollector(max_results=max_results)
                 papers = []
-                for sub in conf_subs:
-                    # Try years from current down to current-2 until we find results
-                    for yr in range(current_year, current_year - 3, -1):
-                        batch = collector.search_conference(sub.value, year=yr)
-                        if batch:
-                            papers.extend(batch)
-                            break
-                if not conf_subs:
-                    console.print("[yellow]No conference subscriptions. Use: paperader subscribe --conference NeurIPS[/yellow]")
-                    return
+                for yr in range(current_year, current_year - 3, -1):
+                    batch = collector.search_conference(conference, year=yr)
+                    if batch:
+                        papers.extend(batch)
+                        break
+            elif source == "openreview":
+                from paperader.collectors.openreview import OpenReviewCollector
+
+                conf_key = conference or "ICLR2025"
+                collector = OpenReviewCollector(max_results=max_results)
+                console.print(f"[dim]Fetching {conf_key} from OpenReview...[/dim]")
+                papers = collector.get_accepted_papers(conf_key)
+                console.print(f"[dim]  Got {len(papers)} papers[/dim]")
+            elif source == "acl":
+                from paperader.collectors.acl_anthology import AclAnthologyCollector
+
+                conf_key = conference or "ACL2024"
+                collector = AclAnthologyCollector(max_results=max_results)
+                console.print(f"[dim]Fetching {conf_key} from ACL Anthology...[/dim]")
+                papers = collector.get_conference_papers(conf_key)
+                console.print(f"[dim]  Got {len(papers)} papers[/dim]")
             else:
                 console.print(f"[red]Unknown source: {source}[/red]")
                 return
@@ -112,66 +102,6 @@ def collect(
 
 
 @app.command()
-def subscribe(
-    category: Optional[list[str]] = typer.Option(None, help="arXiv category (e.g. cs.CL)"),
-    keyword: Optional[list[str]] = typer.Option(None, help="Keyword to track"),
-    conference: Optional[list[str]] = typer.Option(None, help="Conference to monitor"),
-    remove: bool = typer.Option(False, "--remove", help="Remove instead of add"),
-):
-    """Manage topic subscriptions."""
-    with get_session() as session:
-        user = _ensure_default_user(session)
-
-        items: list[tuple[str, str]] = []
-        for c in category or []:
-            items.append(("category", c))
-        for k in keyword or []:
-            items.append(("keyword", k))
-        for conf in conference or []:
-            items.append(("conference", conf))
-
-        if not items:
-            # Show current subscriptions
-            subs = session.query(UserSubscription).filter(UserSubscription.user_id == user.id).all()
-            if not subs:
-                console.print("[yellow]No subscriptions yet. Use --category, --keyword, or --conference to add.[/yellow]")
-                return
-
-            table = Table(title="Your Subscriptions")
-            table.add_column("Type", style="cyan")
-            table.add_column("Value", style="green")
-            for s in subs:
-                table.add_row(s.sub_type, s.value)
-            console.print(table)
-            return
-
-        for sub_type, value in items:
-            existing = (
-                session.query(UserSubscription)
-                .filter(
-                    UserSubscription.user_id == user.id,
-                    UserSubscription.sub_type == sub_type,
-                    UserSubscription.value == value,
-                )
-                .first()
-            )
-
-            if remove:
-                if existing:
-                    session.delete(existing)
-                    console.print(f"[red]Removed:[/red] {sub_type} = {value}")
-                else:
-                    console.print(f"[yellow]Not found:[/yellow] {sub_type} = {value}")
-            else:
-                if existing:
-                    console.print(f"[yellow]Already subscribed:[/yellow] {sub_type} = {value}")
-                else:
-                    sub = UserSubscription(user_id=user.id, sub_type=sub_type, value=value)
-                    session.add(sub)
-                    console.print(f"[green]Added:[/green] {sub_type} = {value}")
-
-
-@app.command()
 def search(
     query: str = typer.Argument(help="Search query"),
     limit: int = typer.Option(20, help="Max results"),
@@ -190,26 +120,16 @@ def search(
         table.add_column("#", style="dim", width=3)
         table.add_column("Title", style="white", max_width=60)
         table.add_column("Year", style="cyan", width=4)
-        table.add_column("Categories", style="green", max_width=20)
-        table.add_column("arXiv", style="blue", max_width=15)
+        table.add_column("Venue", style="green", max_width=20)
 
         for i, paper in enumerate(results, 1):
-            cats = ", ".join(paper.categories[:3]) if paper.categories else ""
-            table.add_row(
-                str(i),
-                paper.title[:60],
-                str(paper.year or ""),
-                cats,
-                paper.arxiv_id or "",
-            )
+            table.add_row(str(i), paper.title[:60], str(paper.year or ""), paper.venue or "")
 
         console.print(table)
 
 
 @app.command()
-def enrich(
-    limit: int = typer.Option(50, help="Max papers to enrich"),
-):
+def enrich(limit: int = typer.Option(50, help="Max papers to enrich")):
     """Enrich papers with Semantic Scholar data (citations, TLDR)."""
     from paperader.collectors.semantic_scholar import SemanticScholarClient
 
@@ -271,11 +191,7 @@ def smart_search(
 
         for i, r in enumerate(result.results, 1):
             table.add_row(
-                str(i),
-                f"{r.score:.2f}",
-                r.paper.title[:55],
-                str(r.paper.year or ""),
-                r.reason[:40],
+                str(i), f"{r.score:.2f}", r.paper.title[:55], str(r.paper.year or ""), r.reason[:40]
             )
 
         console.print(table)
@@ -289,19 +205,11 @@ def stats():
     with get_session() as session:
         total = session.query(func.count(Paper.id)).scalar()
         sources = (
-            session.query(Paper.source, func.count(Paper.id))
-            .group_by(Paper.source)
-            .all()
-        )
-        recent = (
-            session.query(func.count(Paper.id))
-            .filter(Paper.published_date.isnot(None))
-            .scalar()
+            session.query(Paper.source, func.count(Paper.id)).group_by(Paper.source).all()
         )
 
         console.print(f"\n[bold]Paper Collection Stats[/bold]")
         console.print(f"  Total papers: [cyan]{total}[/cyan]")
-        console.print(f"  With publish date: [cyan]{recent}[/cyan]")
         console.print(f"\n  [bold]By source:[/bold]")
         for src, count in sources:
             console.print(f"    {src}: [green]{count}[/green]")

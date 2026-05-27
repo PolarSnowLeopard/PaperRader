@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: .
+    image: ${DOCKERHUB_USERNAME:-polarsnowleopard}/paperader-backend:latest
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - paper_data:/app/data
+    ports:
+      - "8001:8001"
+
+  frontend:
+    build: ./frontend
+    image: ${DOCKERHUB_USERNAME:-polarsnowleopard}/paperader-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  paper_data:

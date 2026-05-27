@@ -1,15 +1,36 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from server.routers import papers, search, stats, sync
+from server.routers import chat, folders, notes, papers, report, search, sync, tags, workspaces
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
         title="PaperRader API",
-        description="AI-powered research paper assistant",
-        version="0.1.0",
+        description="AI-powered research paper management platform",
+        version="2.0.0",
     )
+
+    @app.on_event("startup")
+    def _init_db():
+        from sqlalchemy import inspect, text
+        from paperader.models import Base
+        from paperader.models.base import get_engine
+        from paperader.config import get_settings
+
+        engine = get_engine()
+        Base.metadata.create_all(engine)
+        Path(get_settings().pdf_storage_path).mkdir(parents=True, exist_ok=True)
+
+        with engine.connect() as conn:
+            inspector = inspect(engine)
+            if "papers" in inspector.get_table_names():
+                cols = {c["name"] for c in inspector.get_columns("papers")}
+                if "report" not in cols:
+                    conn.execute(text("ALTER TABLE papers ADD COLUMN report TEXT"))
+                    conn.commit()
 
     app.add_middleware(
         CORSMiddleware,
@@ -19,9 +40,14 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.include_router(workspaces.router)
+    app.include_router(folders.router)
+    app.include_router(tags.router)
+    app.include_router(notes.router)
     app.include_router(papers.router)
+    app.include_router(report.router)
+    app.include_router(chat.router)
     app.include_router(search.router)
-    app.include_router(stats.router)
     app.include_router(sync.router)
 
     @app.get("/api/health")

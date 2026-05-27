@@ -22,6 +22,7 @@ def semantic_search(
     query: str,
     limit: int = 10,
     candidate_limit: int = 100,
+    paper_ids: list[int] | None = None,
 ) -> SearchResult:
     start_time = time.time()
 
@@ -30,6 +31,8 @@ def semantic_search(
 
     # Step 2: Build SQL query from intent
     base_query = session.query(Paper)
+    if paper_ids is not None:
+        base_query = base_query.filter(Paper.id.in_(paper_ids))
     filtered_query = build_query(base_query, intent)
     candidates = filtered_query.order_by(Paper.published_date.desc()).limit(candidate_limit).all()
 

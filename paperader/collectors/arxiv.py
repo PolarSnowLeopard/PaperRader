@@ -50,25 +50,31 @@ class ArxivCollector(BaseCollector):
             "sortOrder": "descending",
         }
 
+        response = None
         for attempt in range(3):
             try:
                 response = httpx.get(
                     ARXIV_API_URL, params=params, timeout=60.0, follow_redirects=True
                 )
+                if response.status_code == 429:
+                    time.sleep(30 * (attempt + 1))
+                    continue
                 response.raise_for_status()
                 break
             except httpx.TimeoutException:
                 if attempt == 2:
                     raise
                 time.sleep(10)
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 429:
-                    # arXiv rate limiting - wait longer
-                    time.sleep(30 * (attempt + 1))
-                elif attempt == 2:
+            except httpx.HTTPStatusError:
+                if attempt == 2:
                     raise
-                else:
-                    time.sleep(5)
+                time.sleep(5)
+
+        if response is None or response.status_code != 200:
+            return []
+
+        if not response.text.strip().startswith("<?xml") and not response.text.strip().startswith("<"):
+            return []
 
         root = ET.fromstring(response.text)
         papers = []

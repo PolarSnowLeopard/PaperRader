@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Database
     database_url: str = f"sqlite:///{PROJECT_ROOT}/data/paperader.db"
 
+    # Storage
+    pdf_storage_path: str = str(PROJECT_ROOT / "data" / "pdfs")
+
     # LLM
     llm_model: str = "openrouter/google/gemini-2.5-flash"
     llm_api_key: str = ""

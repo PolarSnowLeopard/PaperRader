@@ -14,6 +14,8 @@ def upsert_papers(session: Session, papers: list[PaperData]) -> tuple[int, int]:
             existing = session.query(Paper).filter(Paper.arxiv_id == p.arxiv_id).first()
         if not existing and p.doi:
             existing = session.query(Paper).filter(Paper.doi == p.doi).first()
+        if not existing and not p.arxiv_id and not p.doi:
+            existing = session.query(Paper).filter(Paper.title == p.title, Paper.year == p.year).first()
 
         if existing:
             if p.abstract and not existing.abstract:
