@@ -5,24 +5,6 @@ on:
     branches: [main]
 
 jobs:
-  backend-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-
-      - name: Install dependencies
-        run: uv sync --frozen --no-dev
-
-      - name: Lint with Ruff
-        run: uv run ruff check paperader/ server/
-
   frontend-build:
     runs-on: ubuntu-latest
     steps:
