@@ -13,15 +13,30 @@ from paperader.collectors.base import BaseCollector, PaperData
 
 OPENREVIEW_API = "https://api2.openreview.net"
 
-# Venue IDs for major conferences (updated yearly)
-VENUE_IDS = {
-    "ICLR2025": "ICLR.cc/2025/Conference",
-    "ICLR2024": "ICLR.cc/2024/Conference",
-    "NeurIPS2024": "NeurIPS.cc/2024/Conference",
-    "NeurIPS2023": "NeurIPS.cc/2023/Conference",
-    "ICML2024": "ICML.cc/2024/Conference",
-    "ICML2025": "ICML.cc/2025/Conference",
+# Known venue ID patterns for major conferences
+VENUE_PATTERNS = {
+    "ICLR": "ICLR.cc/{year}/Conference",
+    "NeurIPS": "NeurIPS.cc/{year}/Conference",
+    "ICML": "ICML.cc/{year}/Conference",
+    "COLM": "COLM.cc/{year}/Conference",
+    "AAAI": "AAAI.org/{year}/Conference",
 }
+
+
+def resolve_venue_id(conference_key: str) -> str | None:
+    """Resolve a conference key like 'ICLR2025' to an OpenReview venue ID."""
+    import re
+
+    m = re.match(r"^([A-Za-z]+)(\d{4})$", conference_key)
+    if not m:
+        return None
+    name, year = m.group(1).upper(), m.group(2)
+    # Try known patterns first
+    for prefix, pattern in VENUE_PATTERNS.items():
+        if name == prefix.upper():
+            return pattern.format(year=year)
+    # Fallback: guess common pattern
+    return f"{name}.cc/{year}/Conference"
 
 
 class OpenReviewCollector(BaseCollector):
@@ -34,7 +49,7 @@ class OpenReviewCollector(BaseCollector):
         return self.get_accepted_papers(conference)
 
     def get_accepted_papers(self, conference_key: str) -> list[PaperData]:
-        venue_id = VENUE_IDS.get(conference_key)
+        venue_id = resolve_venue_id(conference_key)
         if not venue_id:
             return []
 
@@ -111,4 +126,11 @@ class OpenReviewCollector(BaseCollector):
         return papers
 
     def list_available_conferences(self) -> list[str]:
-        return list(VENUE_IDS.keys())
+        import datetime
+
+        year = datetime.datetime.now(datetime.timezone.utc).year
+        confs = []
+        for name in VENUE_PATTERNS:
+            for y in range(year, year - 3, -1):
+                confs.append(f"{name}{y}")
+        return confs
