@@ -6,8 +6,8 @@ from pathlib import Path
 
 import httpx
 
-from paperader.config import get_settings
 from paperader.collectors.base import PaperData
+from paperader.config import get_settings
 
 
 def get_pdf_storage_dir() -> Path:

@@ -3,7 +3,18 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from server.routers import auth, chat, folders, notes, papers, report, search, sync, tags, workspaces
+from server.routers import (
+    auth,
+    chat,
+    folders,
+    notes,
+    papers,
+    report,
+    search,
+    sync,
+    tags,
+    workspaces,
+)
 
 
 def create_app() -> FastAPI:
@@ -16,9 +27,10 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def _init_db():
         from sqlalchemy import inspect, text
+
+        from paperader.config import get_settings
         from paperader.models import Base
         from paperader.models.base import get_engine
-        from paperader.config import get_settings
 
         engine = get_engine()
         Base.metadata.create_all(engine)

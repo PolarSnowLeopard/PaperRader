@@ -9,14 +9,14 @@ from sqlalchemy.orm import Session
 from paperader.config import get_settings
 from paperader.models.chunk import PaperChunk
 from paperader.models.paper import Paper
-from paperader.models.tag import PaperTag, Tag
+from paperader.models.tag import PaperTag
+from paperader.services.chunk_service import index_paper_chunks
 from paperader.services.import_service import (
     download_pdf,
     fetch_arxiv_metadata,
     fetch_doi_metadata,
     save_pdf_file,
 )
-from paperader.services.chunk_service import index_paper_chunks
 from server.deps import get_db
 from server.schemas.paper import PaperListOut, PaperOut
 
