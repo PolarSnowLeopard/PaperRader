@@ -11,17 +11,29 @@ import httpx
 
 from paperader.collectors.base import BaseCollector, PaperData
 
-# Mapping from conference keys to (xml_file, volume_id) tuples
+# Conference name → (xml_prefix, default volume_id)
 # XML data: https://github.com/acl-org/acl-anthology/tree/master/data/xml
-ANTHOLOGY_EVENTS = {
-    "ACL2024": ("2024.acl", "long"),
-    "ACL2023": ("2023.acl", "long"),
-    "EMNLP2024": ("2024.emnlp", "main"),
-    "EMNLP2023": ("2023.emnlp", "main"),
-    "NAACL2024": ("2024.naacl", "long"),
-    "NAACL2025": ("2025.naacl", "long"),
-    "EACL2024": ("2024.eacl", "long"),
+ANTHOLOGY_CONF_META = {
+    "ACL": ("acl", "long"),
+    "EMNLP": ("emnlp", "main"),
+    "NAACL": ("naacl", "long"),
+    "EACL": ("eacl", "long"),
+    "COLING": ("coling", "long"),
+    "FINDINGS": ("findings", "main"),
 }
+
+
+def resolve_anthology_event(conference_key: str) -> tuple[str, str] | None:
+    """Resolve e.g. 'ACL2025' → ('2025.acl', 'long')."""
+    m = re.match(r"^([A-Za-z]+)(\d{4})$", conference_key)
+    if not m:
+        return None
+    name, year = m.group(1).upper(), m.group(2)
+    meta = ANTHOLOGY_CONF_META.get(name)
+    if not meta:
+        return None
+    xml_prefix, volume_id = meta
+    return (f"{year}.{xml_prefix}", volume_id)
 
 ANTHOLOGY_XML_BASE = "https://raw.githubusercontent.com/acl-org/acl-anthology/master/data/xml"
 ANTHOLOGY_URL = "https://aclanthology.org"
@@ -36,7 +48,7 @@ class AclAnthologyCollector(BaseCollector):
         return self.get_conference_papers(conference)
 
     def get_conference_papers(self, conference_key: str) -> list[PaperData]:
-        event = ANTHOLOGY_EVENTS.get(conference_key)
+        event = resolve_anthology_event(conference_key)
         if not event:
             return []
 
@@ -118,4 +130,11 @@ class AclAnthologyCollector(BaseCollector):
         return papers
 
     def list_available_conferences(self) -> list[str]:
-        return list(ANTHOLOGY_EVENTS.keys())
+        import datetime
+
+        year = datetime.datetime.now(datetime.timezone.utc).year
+        confs = []
+        for name in ANTHOLOGY_CONF_META:
+            for y in range(year, year - 3, -1):
+                confs.append(f"{name}{y}")
+        return confs

@@ -25,28 +25,33 @@ const importLimit = ref(50)
 const importLoading = ref(false)
 
 const openreviewConfs = [
-  { label: 'ICLR 2025', value: 'ICLR2025', venue: 'ICLR' },
-  { label: 'ICLR 2024', value: 'ICLR2024', venue: 'ICLR' },
-  { label: 'NeurIPS 2024', value: 'NeurIPS2024', venue: 'NeurIPS' },
-  { label: 'NeurIPS 2023', value: 'NeurIPS2023', venue: 'NeurIPS' },
-  { label: 'ICML 2024', value: 'ICML2024', venue: 'ICML' },
-  { label: 'ICML 2025', value: 'ICML2025', venue: 'ICML' },
+  { label: 'ICML 2025', value: 'ICML2025' },
+  { label: 'ICLR 2025', value: 'ICLR2025' },
+  { label: 'NeurIPS 2025', value: 'NeurIPS2025' },
+  { label: 'COLM 2025', value: 'COLM2025' },
+  { label: 'ICML 2024', value: 'ICML2024' },
+  { label: 'ICLR 2024', value: 'ICLR2024' },
+  { label: 'NeurIPS 2024', value: 'NeurIPS2024' },
 ]
 
 const aclConfs = [
-  { label: 'ACL 2024', value: 'ACL2024', venue: 'ACL' },
-  { label: 'ACL 2023', value: 'ACL2023', venue: 'ACL' },
-  { label: 'EMNLP 2024', value: 'EMNLP2024', venue: 'EMNLP' },
-  { label: 'EMNLP 2023', value: 'EMNLP2023', venue: 'EMNLP' },
-  { label: 'NAACL 2024', value: 'NAACL2024', venue: 'NAACL' },
-  { label: 'NAACL 2025', value: 'NAACL2025', venue: 'NAACL' },
+  { label: 'ACL 2025', value: 'ACL2025' },
+  { label: 'NAACL 2025', value: 'NAACL2025' },
+  { label: 'EMNLP 2025', value: 'EMNLP2025' },
+  { label: 'ACL 2024', value: 'ACL2024' },
+  { label: 'EMNLP 2024', value: 'EMNLP2024' },
+  { label: 'NAACL 2024', value: 'NAACL2024' },
+  { label: 'COLING 2024', value: 'COLING2024' },
 ]
+
+const customConf = ref('')
 
 async function syncConference(conf) {
   loading.value = true
   selectedConference.value = conf
   try {
-    const isAcl = conf.startsWith('ACL') || conf.startsWith('EMNLP') || conf.startsWith('NAACL') || conf.startsWith('EACL')
+    const aclPrefixes = ['ACL', 'EMNLP', 'NAACL', 'EACL', 'COLING', 'FINDINGS']
+    const isAcl = aclPrefixes.some(p => conf.toUpperCase().startsWith(p))
     if (isAcl) {
       await triggerAclSync(conf)
     } else {
@@ -169,6 +174,18 @@ async function handleBatchImport() {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Custom sync -->
+      <div class="custom-sync">
+        <a-input-search
+          v-model:value="customConf"
+          placeholder="自定义会议 (如 NeurIPS2025, ACL2025)"
+          enter-button="同步"
+          @search="(v) => v && syncConference(v)"
+          :loading="loading && selectedConference === customConf"
+          style="max-width: 400px"
+        />
       </div>
 
       <!-- Stats Section -->
@@ -391,6 +408,10 @@ async function handleBatchImport() {
 .conf-btn {
   border-radius: var(--radius-sm) !important;
   font-size: 12px;
+}
+
+.custom-sync {
+  margin-bottom: 20px;
 }
 
 /* --- Stats --- */
