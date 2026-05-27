@@ -57,8 +57,11 @@ async function syncConference(conf) {
     } else {
       await triggerOpenReviewSync(conf)
     }
-    message.success(`${conf} 同步已启动，请稍候刷新查看`)
-    setTimeout(loadLogs, 3000)
+    message.success(`${conf} 同步已启动，稍后自动加载论文列表`)
+    setTimeout(() => {
+      loadLogs()
+      loadStats(conf)
+    }, 5000)
   } catch {
     message.error('同步失败')
   } finally {
@@ -71,9 +74,11 @@ async function loadLogs() {
 }
 loadLogs()
 
-async function loadStats(venue) {
+async function loadStats(input) {
   statsLoading.value = true
   stats.value = null
+  // Convert "ICLR2025" → "ICLR 2025" for venue search
+  const venue = input.replace(/([A-Za-z])(\d{4})$/, '$1 $2')
   try {
     stats.value = await getConferenceStats(venue)
     const res = await getPapers({ venue, page_size: 50 })
