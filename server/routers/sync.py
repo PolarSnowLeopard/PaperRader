@@ -150,6 +150,7 @@ def get_sync_logs(limit: int = 20, db: Session = Depends(get_db)):
 def get_conference_stats(venue: str, db: Session = Depends(get_db)):
     """Get statistics for papers from a specific conference/venue."""
     from collections import Counter
+
     from paperader.models.paper import Paper
 
     papers = db.query(Paper).filter(Paper.venue.ilike(f"%{venue}%")).all()

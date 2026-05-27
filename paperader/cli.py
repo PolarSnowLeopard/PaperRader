@@ -34,8 +34,8 @@ def collect(
     max_results: int = typer.Option(100, help="Maximum papers to collect"),
 ):
     """Collect papers from specified source."""
-    from paperader.services.paper_service import upsert_papers
     from paperader.models.sync_log import SyncLog
+    from paperader.services.paper_service import upsert_papers
 
     with get_session() as session:
         log = SyncLog(source=source, status="running")
@@ -208,9 +208,9 @@ def stats():
             session.query(Paper.source, func.count(Paper.id)).group_by(Paper.source).all()
         )
 
-        console.print(f"\n[bold]Paper Collection Stats[/bold]")
+        console.print("\n[bold]Paper Collection Stats[/bold]")
         console.print(f"  Total papers: [cyan]{total}[/cyan]")
-        console.print(f"\n  [bold]By source:[/bold]")
+        console.print("\n  [bold]By source:[/bold]")
         for src, count in sources:
             console.print(f"    {src}: [green]{count}[/green]")
         console.print()

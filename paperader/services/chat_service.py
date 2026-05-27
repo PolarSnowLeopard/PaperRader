@@ -6,8 +6,7 @@ from paperader.llm.client import get_completion
 from paperader.models.chat import ChatMessage, ChatSession
 from paperader.models.chunk import PaperChunk
 from paperader.models.paper import Paper
-from paperader.models.workspace import FolderPaper, Folder
-
+from paperader.models.workspace import Folder, FolderPaper
 
 CHAT_SYSTEM = """你是一个科研助手，帮助用户分析和理解工作空间中的论文集合。
 你可以访问工作空间内多篇论文的内容。根据提供的论文片段回答用户问题。
